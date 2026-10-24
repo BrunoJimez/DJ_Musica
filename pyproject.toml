@@ -1,0 +1,173 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retrack-studio"
+version = "1.0.0"
+description = "RETRACK Studio - Reverse engineering, deep analysis and guided learning for DJ / electronic music production. 100% free & open source, fully offline."
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = { text = "MIT" }
+authors = [{ name = "RETRACK Studio contributors" }]
+keywords = [
+    "dj", "music-information-retrieval", "reverse-engineering", "audio-analysis",
+    "stem-separation", "beat-tracking", "daw", "vst3", "music-education",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Multimedia :: Sound/Audio :: MIDI",
+    "Topic :: Education",
+]
+
+# ---------------------------------------------------------------------------
+# TIER 0 - "core": pure scientific python. Always installable, no GPU, no
+# compilation beyond wheels. Everything in retrack.analysis works with this.
+# ---------------------------------------------------------------------------
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "soundfile>=0.12",
+    "librosa>=0.10.1",
+    "mido>=1.3",
+    "jinja2>=3.1",
+    "matplotlib>=3.7",
+    "rich>=13.0",
+    "typer>=0.9",
+    "platformdirs>=3.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# --- Graphical panel (the DJ / producer console) --------------------------
+gui = [
+    "PySide6>=6.5",
+    "pyqtgraph>=0.13",
+]
+
+# --- Realtime audio + MIDI hardware (live performance mode) ---------------
+live = [
+    "sounddevice>=0.4.6",
+    "python-rtmidi>=1.5",
+]
+
+# --- Reports: PDF / HTML / score engraving -------------------------------
+reports = [
+    "reportlab>=4.0",
+    "music21>=9.1",
+]
+
+# --- Neural models. Free / open weights only, run locally. ---------------
+#     torch is installed separately (see scripts/install_torch.py) so the
+#     correct CUDA build is picked for the detected GPU.
+ai = [
+    "demucs>=4.0",
+    "basic-pitch>=0.4",
+    "faster-whisper>=1.0",
+    "onnxruntime>=1.16",
+]
+
+# --- VST3 / CLAP / AU plugin hosting -------------------------------------
+#     NOTE: pedalboard is GPLv3. See NOTICE.md before redistributing.
+plugins = [
+    "pedalboard>=0.9",
+]
+
+# --- Optional best-in-class MIR back ends --------------------------------
+mir = [
+    "madmom>=0.16.1",
+]
+
+# --- Local LLM for the AI advisor (open weights, GGUF) -------------------
+llm = [
+    "llama-cpp-python>=0.2.70",
+]
+
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.8",
+    "pre-commit>=3.5",
+]
+
+# Everything except torch-dependent extras (installed by the setup script).
+full = [
+    "retrack-studio[gui,live,reports,plugins,mir]",
+]
+
+[project.urls]
+Homepage = "https://github.com/BrunoJimez/retrack-studio"
+Documentation = "https://github.com/BrunoJimez/retrack-studio/tree/main/docs"
+Issues = "https://github.com/BrunoJimez/retrack-studio/issues"
+
+[project.scripts]
+retrack = "retrack.cli:main"
+
+[project.gui-scripts]
+retrack-studio = "retrack.ui.app:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+retrack = [
+    "reports/templates/*.j2",
+    "hardware/mappings/*.json",
+    "ui/themes/*.qss",
+    "ai/knowledge/*.yaml",
+]
+
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "E501",   # line length is handled by the formatter
+    "B008",   # typer uses function calls in defaults
+    "SIM108", # ternaries are not always clearer
+    "SIM105", # contextlib.suppress hides which call is being guarded
+    "RUF046", # int(round(x)) states the intent; round(x) alone reads as float
+    "RUF001", # the prose deliberately uses typographic dashes and quotes
+    "RUF002",
+    "RUF003",
+    "UP038",  # isinstance((A, B)) is faster than the PEP 604 form on 3.10-3.11
+    "B027",   # RetrackPlugin hooks are intentionally optional, not abstract
+    "B024",   # ...which also means the base class has no abstract method
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011", "SIM115"]
+# Qt overrides must keep their camelCase names.
+"src/retrack/ui/*" = ["N802"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: takes more than a couple of seconds",
+    "needs_torch: requires the optional torch/demucs stack",
+    "needs_gui: requires PySide6 and a display",
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = false
+check_untyped_defs = true
